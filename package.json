@@ -2,13 +2,14 @@
   "name": "@ialert/react-native",
   "version": "0.1.0",
   "description": "iAlert React Native SDK: register Android and iOS apps and receive notifications over the iAlert Gateway and Inbox.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "react-native": "./dist/index.js",
   "files": [
-    "dist"
+    "dist",
+    "NOTICE"
   ],
   "sideEffects": false,
   "scripts": {
