@@ -1,10 +1,18 @@
-# @ialert/react-native
+# ialert-react-native
 
 iAlert React Native SDK. It registers the app as an `android` or `ios` device and receives notifications while the app runs, over iAlert's own channel: a WebSocket to the iAlert Gateway, plus the device Inbox for anything sent while the app was closed. Each notification reaches your listeners once, across both channels and restarts. No runtime dependencies.
 
+## Install
+
+```bash
+npm install ialert-react-native
+```
+
+## Usage
+
 ```ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createIAlert } from "@ialert/react-native";
+import { createIAlert } from "ialert-react-native";
 
 const ialert = createIAlert({ publicKey: "ia_pk_live_…", storage: AsyncStorage });
 
