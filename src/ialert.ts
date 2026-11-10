@@ -4,7 +4,7 @@ import { GatewayConnection, type WebSocketFactory } from "./gateway.ts";
 import { MemoryStorage, Store } from "./storage.ts";
 import type { AckEvent, ConnectionState, Device, DevicePlatform, IAlertMessage, KeyValueStorage, RegisterOptions, TagValue, UpdateOptions } from "./types.ts";
 
-export const SDK_VERSION = "0.1.0";
+export const SDK_VERSION = "0.2.0";
 
 const TAG_KEY = /^[A-Za-z0-9_.:-]{1,64}$/;
 const SEEN_LIMIT = 500;
@@ -120,6 +120,30 @@ export class IAlert {
 
     setExternalUserId(externalUserId: string | null): Promise<Device> {
         return this.update({ externalUserId });
+    }
+
+    /**
+     * Join a Live Activity channel so its broadcasts reach this Android device as FCM
+     * data messages (read them with `parseLiveActivityUpdate`). Register with the FCM
+     * token as `pushToken` first, and subscribe again after it changes. On iOS,
+     * subscribe the Live Activity itself with ActivityKit instead.
+     */
+    subscribeLiveActivity(channelId: string): Promise<void> {
+        return this.liveActivity(channelId, true);
+    }
+
+    /** Leave a Live Activity channel (Android). */
+    unsubscribeLiveActivity(channelId: string): Promise<void> {
+        return this.liveActivity(channelId, false);
+    }
+
+    private async liveActivity(channelId: string, subscribe: boolean): Promise<void> {
+        if (this.options.platform === "ios") {
+            throw new IAlertError(0, "platform_not_supported", "On iOS, subscribe the Live Activity with ActivityKit: Activity.request(..., pushType: .channel(channelId)).");
+        }
+
+        const registration = await this.requireRegistration();
+        await this.withToken(() => this.api.liveActivity(registration.deviceId, registration.deviceToken, channelId, subscribe), false);
     }
 
     /** Stop receiving notifications; call `register()` to subscribe again. */
@@ -338,12 +362,15 @@ export class IAlert {
         await this.store.remove("registration");
     }
 
-    /** A rejected device token means the device was deleted or unsubscribed elsewhere. */
-    private async withToken<T>(call: () => Promise<T>): Promise<T> {
+    /**
+     * A rejected device token means the device was deleted or unsubscribed elsewhere.
+     * A 404 means the same, except where the path also names another resource (a channel).
+     */
+    private async withToken<T>(call: () => Promise<T>, forgetOnNotFound = true): Promise<T> {
         try {
             return await call();
         } catch (error) {
-            if (error instanceof IAlertError && (error.code === "device_token_invalid" || error.status === 404)) {
+            if (error instanceof IAlertError && (error.code === "device_token_invalid" || (forgetOnNotFound && error.status === 404))) {
                 this.disconnect();
                 await this.forget();
             }

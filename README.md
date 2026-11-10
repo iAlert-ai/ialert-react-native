@@ -32,9 +32,34 @@ await ialert.unsubscribe();
 - `delivered` is acked automatically (`autoAckDelivered: false` turns it off). Report `read` / `clicked` yourself.
 - Other options: `apiUrl`, `gatewayUrl`, `fetch`, `WebSocket`, `autoConnect`. After a restart, call `register()` again, or `await ialert.ready()` then `connect()`.
 
+## Live Activity broadcasts
+
+One push from your server updates a live notification on every subscribed device (scores, deliveries, flights). Your server creates the channel with `POST /v1/live-activity-channels` and gives its `id` to the app.
+
+**Android** joins through iAlert, with the FCM token from `@react-native-firebase/messaging`:
+
+```ts
+import messaging from "@react-native-firebase/messaging";
+import { parseLiveActivityUpdate } from "ialert-react-native";
+
+await ialert.register({ pushToken: await messaging().getToken() });
+await ialert.subscribeLiveActivity(channelId); // and unsubscribeLiveActivity(channelId)
+
+messaging().onMessage(async (message) => {
+    const update = parseLiveActivityUpdate(message.data);
+    if (!update) return; // not a Live Activity update
+    // show or update one ongoing notification per update.channelId (e.g. with Notifee),
+    // and remove it when update.event === "end"
+});
+```
+
+Subscribe again when FCM issues a new token (`onTokenRefresh`).
+
+**iOS** subscribes the Live Activity itself with ActivityKit in native code, using the channel's `channel_id`: `Activity.request(attributes:content:pushType: .channel(channelId))`. `subscribeLiveActivity` rejects with `platform_not_supported` on iOS.
+
 ## Next step: native push
 
-0.1.0 delivers only while the app runs. Next comes FCM/APNs integration (for example with `@react-native-firebase/messaging`): pass the token to `register({ pushToken })`, and dedupe provider pushes by their `ialert_id` field against Gateway/Inbox messages.
+Regular notifications still arrive only while the app runs. Next comes FCM/APNs integration (for example with `@react-native-firebase/messaging`): pass the token to `register({ pushToken })`, and dedupe provider pushes by their `ialert_id` field against Gateway/Inbox messages.
 
 ## Development
 

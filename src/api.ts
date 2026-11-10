@@ -72,6 +72,11 @@ export class ApiClient {
         return acknowledged;
     }
 
+    /** Join or leave a Live Activity channel (its FCM topic). */
+    async liveActivity(deviceId: string, deviceToken: string, channelId: string, subscribe: boolean): Promise<void> {
+        await this.request(subscribe ? "POST" : "DELETE", `/devices/${encodeURIComponent(deviceId)}/live-activity-channels/${encodeURIComponent(channelId)}`, undefined, deviceToken);
+    }
+
     private async request<T>(method: string, pathOrUrl: string, body?: unknown, deviceToken?: string): Promise<T> {
         const headers: Record<string, string> = {
             Accept: "application/json",

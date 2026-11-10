@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
-import { IAlert, IAlertError, type IAlertMessage } from "../src/index.ts";
+import { IAlert, IAlertError, parseLiveActivityUpdate, type IAlertMessage } from "../src/index.ts";
 import { FakeSocket, ackResponder, fakeFetch, flush, inboxEntry, inboxResponder, newStorage, registerResponder } from "./helpers.ts";
 
 const PUBLIC_KEY = "ia_pk_live_abcdefghijkl_secret";
@@ -41,7 +41,7 @@ describe("registration", () => {
         assert.match(String(body.push_token), /^ia_rn_[0-9a-f-]{36}$/);
         assert.equal(body.external_user_id, "user-42");
         assert.deepEqual(body.tags, { plan: "gold" });
-        assert.equal(body.sdk_version, "0.1.0");
+        assert.equal(body.sdk_version, "0.2.0");
         assert.equal((second?.body as Record<string, unknown>).push_token, body.push_token);
     });
 
@@ -187,5 +187,68 @@ describe("gateway", () => {
         await flush();
         assert.equal(FakeSocket.instances.length, 2);
         assert.equal(ialert.deviceId, null);
+    });
+});
+
+describe("live activity channels", () => {
+    const channelResponder = (status: number, body: unknown) => (request: { url: string }) =>
+        request.url.includes("/live-activity-channels/") ? { status, body } : undefined;
+
+    it("joins and leaves a channel with the device token", async () => {
+        const { fetch, requests } = fakeFetch(registerResponder, channelResponder(200, { subscribed: true }));
+        const ialert = sdk(fetch, newStorage(), { autoConnect: false });
+
+        await ialert.register({ pushToken: "fcm-token-1" });
+        await ialert.subscribeLiveActivity("01J0CHANNEL");
+        await ialert.unsubscribeLiveActivity("01J0CHANNEL");
+
+        const [, join, leave] = requests;
+        assert.equal(join?.method, "POST");
+        assert.equal(join?.url, "https://api.test/api/v1/devices/dev_1/live-activity-channels/01J0CHANNEL");
+        assert.equal(join?.headers["X-Device-Token"], "ia_dt_dev_1.sig");
+        assert.equal(leave?.method, "DELETE");
+        assert.equal(leave?.url, join?.url);
+    });
+
+    it("refuses ios locally and keeps the registration on an unknown channel", async () => {
+        const ios = new IAlert({ publicKey: PUBLIC_KEY, platform: "ios", storage: newStorage(), fetch: fakeFetch().fetch });
+        await assert.rejects(ios.subscribeLiveActivity("c"), (error: IAlertError) => error.code === "platform_not_supported");
+
+        const { fetch } = fakeFetch(registerResponder);
+        const ialert = sdk(fetch, newStorage(), { autoConnect: false });
+        await ialert.register({ pushToken: "fcm-token-1" });
+
+        await assert.rejects(ialert.subscribeLiveActivity("missing"), (error: IAlertError) => error.status === 404);
+        assert.equal(ialert.deviceId, "dev_1");
+    });
+
+    it("reads live activity updates from fcm data and ignores other messages", () => {
+        const update = parseLiveActivityUpdate({
+            ialert_type: "live_activity",
+            ialert_channel: "01J0CHANNEL",
+            ialert_broadcast: "01J0BROADCAST",
+            event: "update",
+            timestamp: "1700000000",
+            content_state: '{"home":2,"away":1}',
+            title: "Goal!",
+            relevance_score: "0.5",
+        });
+
+        assert.deepEqual(update, {
+            channelId: "01J0CHANNEL",
+            broadcastId: "01J0BROADCAST",
+            event: "update",
+            contentState: { home: 2, away: 1 },
+            title: "Goal!",
+            body: null,
+            sound: null,
+            timestamp: 1700000000,
+            staleDate: null,
+            dismissalDate: null,
+            relevanceScore: 0.5,
+        });
+        assert.equal(parseLiveActivityUpdate({ ialert_type: "live_activity", ialert_channel: "c", event: "end" })?.event, "end");
+        assert.equal(parseLiveActivityUpdate({ ialert_id: "01J0NOTIFICATION" }), null);
+        assert.equal(parseLiveActivityUpdate({ ialert_type: "live_activity", ialert_channel: "c", event: "start" }), null);
     });
 });
