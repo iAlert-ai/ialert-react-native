@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0
+
+- Native push: `didReceivePush(message)` and `didOpenPush(message)` take `@react-native-firebase/messaging` messages (FCM data with `ialert_id`, or an APNs `ialert` payload), deduplicate them against the Gateway and Inbox, and ack delivered / clicked.
+
 ## 0.2.0
 
 - Live Activity broadcasts on Android: `subscribeLiveActivity(channelId)` / `unsubscribeLiveActivity(channelId)` (iOS rejects with `platform_not_supported`; subscribe with ActivityKit there), and `parseLiveActivityUpdate(data)` reads the broadcast from an FCM data message.

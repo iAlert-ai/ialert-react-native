@@ -30,7 +30,7 @@ export interface IAlertMessage {
     collapse_id: string | null;
     created_at: string | null;
     /** Where the SDK got it first. */
-    source: "gateway" | "inbox";
+    source: "gateway" | "inbox" | "push";
 }
 
 export type AckEvent = "delivered" | "read" | "clicked";
@@ -63,3 +63,9 @@ export interface KeyValueStorage {
 
 export type ConnectionState = "idle" | "connecting" | "ready" | "closed";
 export type DevicePlatform = "android" | "ios";
+
+/** The fields of a `@react-native-firebase/messaging` RemoteMessage that iAlert reads. */
+export interface RemotePush {
+    data?: Record<string, unknown>;
+    notification?: { title?: string; body?: string; android?: { imageUrl?: string } };
+}

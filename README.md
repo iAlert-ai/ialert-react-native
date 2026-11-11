@@ -57,9 +57,23 @@ Subscribe again when FCM issues a new token (`onTokenRefresh`).
 
 **iOS** subscribes the Live Activity itself with ActivityKit in native code, using the channel's `channel_id`: `Activity.request(attributes:content:pushType: .channel(channelId))`. `subscribeLiveActivity` rejects with `platform_not_supported` on iOS.
 
-## Next step: native push
+## Native push (notifications while the app is closed)
 
-Regular notifications still arrive only while the app runs. Next comes FCM/APNs integration (for example with `@react-native-firebase/messaging`): pass the token to `register({ pushToken })`, and dedupe provider pushes by their `ialert_id` field against Gateway/Inbox messages.
+Use `@react-native-firebase/messaging` for the native side and give iAlert the token it needs: the **FCM token on Android** and the **APNs token on iOS** (iAlert sends to APNs directly with your `.p8`).
+
+```ts
+import messaging from "@react-native-firebase/messaging";
+import { Platform } from "react-native";
+
+await messaging().requestPermission();
+const token = Platform.OS === "ios" ? await messaging().getAPNSToken() : await messaging().getToken();
+await ialert.register({ pushToken: token ?? undefined, externalUserId: "user-42" });
+
+messaging().onMessage((message) => ialert.didReceivePush(message)); // deduplicated, acked delivered
+messaging().onNotificationOpenedApp((message) => ialert.didOpenPush(message)); // acked clicked
+```
+
+Register again when FCM issues a new token (`onTokenRefresh`). Without a native token the device still gets messages while the app runs (Gateway) and on the next launch (Inbox). Background Inbox sync with local notifications during an internet shutdown needs the native SDKs and is not part of this package yet.
 
 ## Development
 

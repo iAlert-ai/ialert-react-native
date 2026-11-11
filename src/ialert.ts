@@ -2,9 +2,9 @@ import { ApiClient, type InboxEntry } from "./api.ts";
 import { IAlertError } from "./errors.ts";
 import { GatewayConnection, type WebSocketFactory } from "./gateway.ts";
 import { MemoryStorage, Store } from "./storage.ts";
-import type { AckEvent, ConnectionState, Device, DevicePlatform, IAlertMessage, KeyValueStorage, RegisterOptions, TagValue, UpdateOptions } from "./types.ts";
+import type { AckEvent, ConnectionState, Device, DevicePlatform, IAlertMessage, KeyValueStorage, RegisterOptions, RemotePush, TagValue, UpdateOptions } from "./types.ts";
 
-export const SDK_VERSION = "0.2.0";
+export const SDK_VERSION = "0.3.0";
 
 const TAG_KEY = /^[A-Za-z0-9_.:-]{1,64}$/;
 const SEEN_LIMIT = 500;
@@ -120,6 +120,29 @@ export class IAlert {
 
     setExternalUserId(externalUserId: string | null): Promise<Device> {
         return this.update({ externalUserId });
+    }
+
+    /**
+     * Hand a native push to the SDK, e.g. from `messaging().onMessage`: listeners get it
+     * once, deduplicated against the Gateway and Inbox, and it is acked as delivered.
+     * Returns `null` for pushes that are not from iAlert or already seen.
+     */
+    async didReceivePush(push: RemotePush): Promise<IAlertMessage | null> {
+        const message = fromPush(push);
+
+        return message !== null && (await this.receive(message)) ? message : null;
+    }
+
+    /** Report a tap on an iAlert notification, e.g. from `messaging().onNotificationOpenedApp`. */
+    async didOpenPush(push: RemotePush): Promise<void> {
+        const message = fromPush(push);
+
+        if (message === null) {
+            return;
+        }
+
+        await this.receive(message, false);
+        await this.ack([message.id], "clicked");
     }
 
     /**
@@ -455,4 +478,29 @@ function uuid(): string {
     const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 
     return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+/** FCM data carries `ialert_id`; an APNs payload carries an `ialert` object. */
+function fromPush(push: RemotePush): IAlertMessage | null {
+    const data = push.data ?? {};
+    const apns = data.ialert !== null && typeof data.ialert === "object" ? (data.ialert as Record<string, unknown>) : null;
+    const id = typeof data.ialert_id === "string" ? data.ialert_id : typeof apns?.id === "string" ? apns.id : null;
+
+    if (id === null || id === "") {
+        return null;
+    }
+
+    const { ialert_id: _ignored, ...custom } = data;
+    const payload = apns !== null ? (apns.data !== null && typeof apns.data === "object" ? (apns.data as Record<string, unknown>) : {}) : custom;
+
+    return {
+        id,
+        title: push.notification?.title ?? null,
+        body: push.notification?.body ?? null,
+        image: push.notification?.android?.imageUrl ?? (typeof apns?.image === "string" ? apns.image : null),
+        data: payload,
+        collapse_id: null,
+        created_at: null,
+        source: "push",
+    };
 }

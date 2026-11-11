@@ -41,7 +41,7 @@ describe("registration", () => {
         assert.match(String(body.push_token), /^ia_rn_[0-9a-f-]{36}$/);
         assert.equal(body.external_user_id, "user-42");
         assert.deepEqual(body.tags, { plan: "gold" });
-        assert.equal(body.sdk_version, "0.2.0");
+        assert.equal(body.sdk_version, "0.3.0");
         assert.equal((second?.body as Record<string, unknown>).push_token, body.push_token);
     });
 
@@ -250,5 +250,32 @@ describe("live activity channels", () => {
         assert.equal(parseLiveActivityUpdate({ ialert_type: "live_activity", ialert_channel: "c", event: "end" })?.event, "end");
         assert.equal(parseLiveActivityUpdate({ ialert_id: "01J0NOTIFICATION" }), null);
         assert.equal(parseLiveActivityUpdate({ ialert_type: "live_activity", ialert_channel: "c", event: "start" }), null);
+    });
+});
+
+describe("native push", () => {
+    it("delivers FCM and APNs pushes once and acks taps as clicked", async () => {
+        const { fetch, requests } = fakeFetch(registerResponder, ackResponder);
+        const ialert = sdk(fetch, newStorage(), { autoConnect: false });
+        const received: IAlertMessage[] = [];
+        ialert.onMessage((message) => received.push(message));
+        await ialert.register({ pushToken: "fcm-token-1" });
+
+        const fcm = await ialert.didReceivePush({ data: { ialert_id: "01FCM", order: "42" }, notification: { title: "Order", body: "On the way" } });
+        assert.equal(fcm?.source, "push");
+        assert.deepEqual(fcm?.data, { order: "42" });
+        assert.equal(await ialert.didReceivePush({ data: { ialert_id: "01FCM" } }), null);
+
+        const apns = await ialert.didReceivePush({ data: { ialert: { id: "01APNS", image: "https://cdn.test/a.jpg", data: { k: "v" } } } });
+        assert.equal(apns?.image, "https://cdn.test/a.jpg");
+        assert.deepEqual(apns?.data, { k: "v" });
+        assert.equal(await ialert.didReceivePush({ data: { other: "push" } }), null);
+
+        await ialert.didOpenPush({ data: { ialert_id: "01FCM" } });
+        await flush();
+
+        assert.deepEqual(received.map((m) => m.id), ["01FCM", "01APNS"]);
+        const events = requests.filter((r) => r.url.endsWith("/inbox/ack")).map((r) => (r.body as { event: string }).event);
+        assert.ok(events.includes("delivered") && events.includes("clicked"));
     });
 });
