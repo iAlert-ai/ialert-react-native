@@ -1,6 +1,6 @@
 {
   "name": "ialert-react-native",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "iAlert React Native SDK: register Android and iOS apps and receive notifications over the iAlert Gateway and Inbox.",
   "keywords": [
     "ialert",
