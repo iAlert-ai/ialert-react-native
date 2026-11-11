@@ -93,6 +93,16 @@ export class IAlert {
         this.store = new Store(options.storage ?? new MemoryStorage(), options.publicKey.slice(-12));
     }
 
+    /** The app's public key (`ia_pk_…`). */
+    get publicKey(): string {
+        return this.options.publicKey;
+    }
+
+    /** Base URL of the iAlert API. */
+    get apiUrl(): string {
+        return this.options.apiUrl ?? "https://api.ialert.ir/api/v1";
+    }
+
     /** The registered device id, or null before `register()` (or before the stored state loaded). */
     get deviceId(): string | null {
         return this.state?.registration?.deviceId ?? null;

@@ -12,7 +12,7 @@ apply plugin: "com.android.library"
 
 android {
     namespace = "ir.ialert.reactnative"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 24
@@ -27,8 +27,16 @@ android {
 repositories {
     google()
     mavenCentral()
+    maven { url = uri("https://jitpack.io") }
+    // `-PialertAndroidLocal`: use the Android SDK from `./gradlew publishToMavenLocal`.
+    if (project.hasProperty("ialertAndroidLocal")) mavenLocal()
 }
 
 dependencies {
     implementation("com.facebook.react:react-android:+")
+    if (project.hasProperty("ialertAndroidLocal")) {
+        implementation("ir.ialert:ialert-android:0.5.0")
+    } else {
+        implementation("com.github.iAlert-ai:ialert-android:v0.5.0")
+    }
 }

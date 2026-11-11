@@ -26,7 +26,7 @@ ialert.onMessage((m) => console.log(m.title, m.body)); // optional
 
 **Custom sound:** put the sound file in the app (iOS: add `order.caf` to the Runner target; Android: `res/raw/order.mp3`) and send with `"sound": "order.caf"`. `"sound": "none"` is silent.
 
-**Android:** native push (FCM through iAlert's own Firebase project, nothing to configure) and background sync come in the next release; until then Android devices receive messages over the Gateway while the app runs and from the Inbox on the next launch.
+**Android:** nothing to configure. The native module uses the iAlert Android SDK: an FCM token from iAlert's shared Firebase project (or your own, once you upload its service account in the panel), so no `google-services.json` or Firebase plugin; notifications with images and custom sounds; taps open `data.url`; and a background sync every 15 minutes shows messages that could not be pushed while FCM is unreachable. The app's `minSdk` must be 23 or later.
 
 ## Usage (manual)
 
@@ -56,22 +56,14 @@ await ialert.unsubscribe();
 
 One push from your server updates a live notification on every subscribed device (scores, deliveries, flights). Your server creates the channel with `POST /v1/live-activity-channels` and gives its `id` to the app.
 
-**Android** joins through iAlert, with the FCM token from `@react-native-firebase/messaging`:
+**Android** joins through iAlert once `IAlert.init` has registered the device with its FCM token:
 
 ```ts
-import messaging from "@react-native-firebase/messaging";
-import { parseLiveActivityUpdate } from "ialert-react-native";
-
-await ialert.register({ pushToken: await messaging().getToken() });
+await ialert.initialized;
 await ialert.subscribeLiveActivity(channelId); // and unsubscribeLiveActivity(channelId)
-
-messaging().onMessage(async (message) => {
-    const update = parseLiveActivityUpdate(message.data);
-    if (!update) return; // not a Live Activity update
-    // show or update one ongoing notification per update.channelId (e.g. with Notifee),
-    // and remove it when update.event === "end"
-});
 ```
+
+The native module shows each channel as one ongoing notification, updated in place and removed when the broadcast ends. (Using `@react-native-firebase/messaging` yourself instead, `parseLiveActivityUpdate(message.data)` reads a broadcast.)
 
 Subscribe again when FCM issues a new token (`onTokenRefresh`).
 

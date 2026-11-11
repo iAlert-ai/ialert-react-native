@@ -13,7 +13,8 @@ export interface NativePayload {
 /** The plugin's native module (`NativeModules.IAlertPush`), injectable for tests. */
 export interface NativeBridge {
     requestPermission(): Promise<boolean>;
-    getToken(): Promise<string | null>;
+    /** Android needs the key and API URL to read the app's push config (iOS ignores them). */
+    getToken(config: { publicKey: string; apiUrl: string }): Promise<string | null>;
     takeInitialOpen(): Promise<NativePayload | null>;
     setRegistration(registration: Record<string, string>): void;
     addListener(event: "onToken" | "onPush" | "onOpen", listener: (value: unknown) => void): void;
@@ -62,7 +63,7 @@ export function defaultBridge(): NativeBridge | null {
 
     return {
         requestPermission: () => module.requestPermission(),
-        getToken: () => module.getToken(),
+        getToken: (config) => module.getToken(config),
         takeInitialOpen: () => module.takeInitialOpen(),
         setRegistration: (registration) => module.setRegistration(registration),
         addListener: (event, listener) => {
@@ -115,7 +116,7 @@ export async function startNative(ialert: IAlert, bridge: NativeBridge | null, o
         if (requestPermission !== false) {
             await bridge.requestPermission();
         }
-        token = await bridge.getToken();
+        token = await bridge.getToken({ publicKey: ialert.publicKey, apiUrl: ialert.apiUrl });
     } catch {
         // no permission or no native push: Gateway and Inbox only
     }

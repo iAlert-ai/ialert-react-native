@@ -247,8 +247,9 @@ public final class IAlertPush: RCTEventEmitter {
         }
     }
 
-    @objc(getToken:rejecter:)
-    func getToken(_ resolve: RCTPromiseResolveBlock, rejecter reject: RCTPromiseRejectBlock) {
+    /// `config` (public key, API URL) is for Android; iOS gets its APNs token without it.
+    @objc(getToken:resolver:rejecter:)
+    func getToken(_ config: NSDictionary?, resolver resolve: RCTPromiseResolveBlock, rejecter reject: RCTPromiseRejectBlock) {
         resolve(IAlertPushSetup.shared.token)
     }
 
