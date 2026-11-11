@@ -24,6 +24,8 @@ ialert.onMessage((m) => console.log(m.title, m.body)); // optional
 
 **iOS** needs two things Apple does not let a package do: the **Push Notifications** capability in Xcode, and the app's APNs key (`.p8`) in the iAlert panel. For delivery during an internet shutdown, also enable **Background Modes → Background fetch** and add `<bundle id>.ialert-sync` under `BGTaskSchedulerPermittedIdentifiers` in Info.plist; missed Inbox messages are then shown as local notifications in the background (iOS decides when).
 
+**Custom sound:** put the sound file in the app (iOS: add `order.caf` to the Runner target; Android: `res/raw/order.mp3`) and send with `"sound": "order.caf"`. `"sound": "none"` is silent.
+
 **Android:** native push (FCM through iAlert's own Firebase project, nothing to configure) and background sync come in the next release; until then Android devices receive messages over the Gateway while the app runs and from the Inbox on the next launch.
 
 ## Usage (manual)

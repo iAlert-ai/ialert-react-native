@@ -187,7 +187,11 @@ public final class IAlertPushSetup: NSObject, UNUserNotificationCenterDelegate {
             let content = UNMutableNotificationContent()
             content.title = title ?? ""
             content.body = text ?? ""
-            content.sound = .default
+            switch message["sound"] as? String {
+            case nil, "default": content.sound = .default
+            case "none": content.sound = nil
+            case let name?: content.sound = UNNotificationSound(named: UNNotificationSoundName(name))
+            }
             var ialert: [String: Any] = ["id": entryId]
             ialert["data"] = message["data"] as? [String: Any]
             ialert["image"] = message["image"] as? String
