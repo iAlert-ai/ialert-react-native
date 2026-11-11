@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0
+
+- Ships its own native module: `IAlert.init()` sets up push without `@react-native-firebase/messaging` or AppDelegate code.
+- iOS: permission, APNs token, foreground display, taps (opens `data.url`) and background Inbox sync as local notifications when `<bundle id>.ialert-sync` is permitted.
+- Android: native module registered; FCM and background sync follow in the next release.
+
 ## 0.4.0
 
 - Auth Push: `respondToAuthRequest` approves or denies a sign-in request on this device (with the typed number for number matching), and a helper reads the request a message carries.

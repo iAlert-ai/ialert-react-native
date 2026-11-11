@@ -3,8 +3,9 @@ import { IAlertError } from "./errors.ts";
 import { GatewayConnection, type WebSocketFactory } from "./gateway.ts";
 import { MemoryStorage, Store } from "./storage.ts";
 import type { AckEvent, AuthRequestInfo, AuthRequestResult, ConnectionState, Device, DevicePlatform, IAlertMessage, KeyValueStorage, RegisterOptions, RemotePush, TagValue, UpdateOptions } from "./types.ts";
+import { currentPlatform, defaultBridge, startNative, type InitOptions, type NativeBridge } from "./native.ts";
 
-export const SDK_VERSION = "0.4.0";
+export const SDK_VERSION = "0.5.0";
 
 const TAG_KEY = /^[A-Za-z0-9_.:-]{1,64}$/;
 const SEEN_LIMIT = 500;
@@ -56,6 +57,27 @@ export class IAlert {
     private loading: Promise<State> | null = null;
     private syncing: Promise<IAlertMessage[]> | null = null;
 
+    /**
+     * One-line setup: asks for notification permission, gets the native push token
+     * from this package's own native module, registers, connects to the Gateway,
+     * shows iAlert notifications in the foreground and reports taps. No Firebase
+     * and no AppDelegate code. `await ialert.initialized` for the device.
+     */
+    static init(options: Omit<IAlertOptions, "platform"> & InitOptions & { platform?: DevicePlatform; bridge?: NativeBridge | null }): IAlert {
+        const { externalUserId, tags, locale, timezone, appVersion, requestPermission, bridge, platform, ...sdkOptions } = options;
+        const ialert = new IAlert({ ...sdkOptions, platform: platform ?? currentPlatform() });
+        const fields = Object.fromEntries(Object.entries({ externalUserId, tags, locale, timezone, appVersion }).filter(([, v]) => v !== undefined));
+        ialert.initialized = startNative(ialert, bridge === undefined ? defaultBridge() : bridge, { ...fields, requestPermission });
+
+        return ialert;
+    }
+
+    /** Resolves when `init()` finished its first registration. */
+    initialized: Promise<Device | null> = Promise.resolve(null);
+
+    /** Told about every registration, so the native background sync can read the Inbox. */
+    onRegistered: ((registration: Record<string, string>) => void) | null = null;
+
     constructor(options: IAlertOptions) {
         if (!options.publicKey.startsWith("ia_pk_")) {
             throw new IAlertError(0, "invalid_public_key", "Use the app's public key (ia_pk_…); secret keys must never ship in apps.");
@@ -98,6 +120,12 @@ export class IAlert {
 
         state.registration = { deviceId: result.data.id, deviceToken: result.device_token };
         await this.store.set("registration", state.registration);
+        this.onRegistered?.({
+            apiUrl: this.options.apiUrl ?? "https://api.ialert.ir/api/v1",
+            publicKey: this.options.publicKey,
+            deviceId: result.data.id,
+            deviceToken: result.device_token,
+        });
 
         if (this.options.autoConnect !== false) {
             this.connect();

@@ -8,7 +8,25 @@ iAlert React Native SDK. It registers the app as an `android` or `ios` device an
 npm install ialert-react-native
 ```
 
-## Usage
+## Quick start
+
+No Firebase or other packages, and no AppDelegate / MainApplication code. Install, then (iOS) `cd ios && pod install`:
+
+```ts
+import { IAlert } from "ialert-react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const ialert = IAlert.init({ publicKey: "ia_pk_live_…", storage: AsyncStorage, externalUserId: "user-42" });
+ialert.onMessage((m) => console.log(m.title, m.body)); // optional
+```
+
+`init` asks for notification permission, gets the native push token from this package's own native module, registers, keeps the Gateway connected, shows iAlert notifications while the app is open, reports taps (and opens `data.url`) and syncs the Inbox. `await ialert.initialized` for the device.
+
+**iOS** needs two things Apple does not let a package do: the **Push Notifications** capability in Xcode, and the app's APNs key (`.p8`) in the iAlert panel. For delivery during an internet shutdown, also enable **Background Modes → Background fetch** and add `<bundle id>.ialert-sync` under `BGTaskSchedulerPermittedIdentifiers` in Info.plist; missed Inbox messages are then shown as local notifications in the background (iOS decides when).
+
+**Android:** native push (FCM through iAlert's own Firebase project, nothing to configure) and background sync come in the next release; until then Android devices receive messages over the Gateway while the app runs and from the Inbox on the next launch.
+
+## Usage (manual)
 
 ```ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -56,24 +74,6 @@ messaging().onMessage(async (message) => {
 Subscribe again when FCM issues a new token (`onTokenRefresh`).
 
 **iOS** subscribes the Live Activity itself with ActivityKit in native code, using the channel's `channel_id`: `Activity.request(attributes:content:pushType: .channel(channelId))`. `subscribeLiveActivity` rejects with `platform_not_supported` on iOS.
-
-## Native push (notifications while the app is closed)
-
-Use `@react-native-firebase/messaging` for the native side and give iAlert the token it needs: the **FCM token on Android** and the **APNs token on iOS** (iAlert sends to APNs directly with your `.p8`).
-
-```ts
-import messaging from "@react-native-firebase/messaging";
-import { Platform } from "react-native";
-
-await messaging().requestPermission();
-const token = Platform.OS === "ios" ? await messaging().getAPNSToken() : await messaging().getToken();
-await ialert.register({ pushToken: token ?? undefined, externalUserId: "user-42" });
-
-messaging().onMessage((message) => ialert.didReceivePush(message)); // deduplicated, acked delivered
-messaging().onNotificationOpenedApp((message) => ialert.didOpenPush(message)); // acked clicked
-```
-
-Register again when FCM issues a new token (`onTokenRefresh`). Without a native token the device still gets messages while the app runs (Gateway) and on the next launch (Inbox). Background Inbox sync with local notifications during an internet shutdown needs the native SDKs and is not part of this package yet.
 
 ## Auth Push (approve a sign-in on the phone)
 
