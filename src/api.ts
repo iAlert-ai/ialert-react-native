@@ -1,5 +1,5 @@
 import { IAlertError } from "./errors.ts";
-import type { AckEvent, Device } from "./types.ts";
+import type { AckEvent, AuthRequestResult, Device } from "./types.ts";
 
 type Fetch = typeof globalThis.fetch;
 
@@ -75,6 +75,17 @@ export class ApiClient {
     /** Join or leave a Live Activity channel (its FCM topic). */
     async liveActivity(deviceId: string, deviceToken: string, channelId: string, subscribe: boolean): Promise<void> {
         await this.request(subscribe ? "POST" : "DELETE", `/devices/${encodeURIComponent(deviceId)}/live-activity-channels/${encodeURIComponent(channelId)}`, undefined, deviceToken);
+    }
+
+    /** Approve or deny an Auth Push sign-in request on this device. */
+    async respondToAuthRequest(deviceId: string, deviceToken: string, requestId: string, decision: "approve" | "deny", code?: string): Promise<AuthRequestResult> {
+        const body: Record<string, unknown> = { decision };
+
+        if (code !== undefined) {
+            body.code = code;
+        }
+
+        return (await this.request<{ data: AuthRequestResult }>("POST", `/devices/${encodeURIComponent(deviceId)}/auth-requests/${encodeURIComponent(requestId)}`, body, deviceToken)).data;
     }
 
     private async request<T>(method: string, pathOrUrl: string, body?: unknown, deviceToken?: string): Promise<T> {

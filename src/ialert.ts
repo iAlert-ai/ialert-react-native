@@ -2,9 +2,9 @@ import { ApiClient, type InboxEntry } from "./api.ts";
 import { IAlertError } from "./errors.ts";
 import { GatewayConnection, type WebSocketFactory } from "./gateway.ts";
 import { MemoryStorage, Store } from "./storage.ts";
-import type { AckEvent, ConnectionState, Device, DevicePlatform, IAlertMessage, KeyValueStorage, RegisterOptions, RemotePush, TagValue, UpdateOptions } from "./types.ts";
+import type { AckEvent, AuthRequestInfo, AuthRequestResult, ConnectionState, Device, DevicePlatform, IAlertMessage, KeyValueStorage, RegisterOptions, RemotePush, TagValue, UpdateOptions } from "./types.ts";
 
-export const SDK_VERSION = "0.3.0";
+export const SDK_VERSION = "0.4.0";
 
 const TAG_KEY = /^[A-Za-z0-9_.:-]{1,64}$/;
 const SEEN_LIMIT = 500;
@@ -104,6 +104,16 @@ export class IAlert {
         }
 
         return result.data;
+    }
+
+    /**
+     * Approve or deny an Auth Push sign-in request (see `authRequestOf(message)`).
+     * With number matching pass the number the user typed; a wrong one denies.
+     */
+    async respondToAuthRequest(requestId: string, approve: boolean, code?: string): Promise<AuthRequestResult> {
+        const registration = await this.requireRegistration();
+
+        return this.withToken(() => this.api.respondToAuthRequest(registration.deviceId, registration.deviceToken, requestId, approve ? "approve" : "deny", code), false);
     }
 
     /** Update the external user id, tags (merged) or locale of this device. */
@@ -502,5 +512,30 @@ function fromPush(push: RemotePush): IAlertMessage | null {
         collapse_id: null,
         created_at: null,
         source: "push",
+    };
+}
+
+/** The Auth Push request a message carries, or `null` for other messages. */
+export function authRequestOf(message: { data: Record<string, unknown> }): AuthRequestInfo | null {
+    const data = message.data;
+
+    if (data.ialert_type !== "auth_request" || typeof data.auth_request_id !== "string") {
+        return null;
+    }
+
+    const reserved = new Set(["ialert_type", "auth_request_id", "number_matching", "expires_at"]);
+    const context: Record<string, string> = {};
+
+    for (const [key, value] of Object.entries(data)) {
+        if (!reserved.has(key) && typeof value === "string") {
+            context[key] = value;
+        }
+    }
+
+    return {
+        id: data.auth_request_id,
+        numberMatching: data.number_matching === "1" || data.number_matching === true,
+        expiresAt: typeof data.expires_at === "string" ? data.expires_at : null,
+        context,
     };
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0
+
+- Auth Push: `respondToAuthRequest` approves or denies a sign-in request on this device (with the typed number for number matching), and a helper reads the request a message carries.
+
 ## 0.3.0
 
 - Native push: `didReceivePush(message)` and `didOpenPush(message)` take `@react-native-firebase/messaging` messages (FCM data with `ialert_id`, or an APNs `ialert` payload), deduplicate them against the Gateway and Inbox, and ack delivered / clicked.

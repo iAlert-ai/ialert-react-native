@@ -75,6 +75,21 @@ messaging().onNotificationOpenedApp((message) => ialert.didOpenPush(message)); /
 
 Register again when FCM issues a new token (`onTokenRefresh`). Without a native token the device still gets messages while the app runs (Gateway) and on the next launch (Inbox). Background Inbox sync with local notifications during an internet shutdown needs the native SDKs and is not part of this package yet.
 
+## Auth Push (approve a sign-in on the phone)
+
+When your server creates an Auth Push request (`POST /v1/auth-requests`), every device of that user gets a high-priority push. Show your own approve/deny screen and answer with the device's token:
+
+```ts
+ialert.onMessage(async (message) => {
+    const request = authRequestOf(message); // null for other messages
+    if (!request) return;
+    // show your approve/deny screen with request.context (ip, city, device…)
+    await ialert.respondToAuthRequest(request.id, userApproved, request.numberMatching ? typedNumber : undefined);
+});
+```
+
+With number matching, the user types the two-digit number shown on your sign-in page; a wrong number denies the request. An unknown or expired request throws without clearing the device registration.
+
 ## Development
 
 ```bash
