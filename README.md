@@ -26,7 +26,7 @@ ialert.onMessage((m) => console.log(m.title, m.body)); // optional
 
 **Custom sound:** put the sound file in the app (iOS: add `order.caf` to the Runner target; Android: `res/raw/order.mp3`) and send with `"sound": "order.caf"`. `"sound": "none"` is silent.
 
-**Android:** nothing to configure. The native module uses the iAlert Android SDK: an FCM token from iAlert's shared Firebase project (or your own, once you upload its service account in the panel), so no `google-services.json` or Firebase plugin; notifications with images and custom sounds; taps open `data.url`; and a background sync every 15 minutes shows messages that could not be pushed while FCM is unreachable. The app's `minSdk` must be 23 or later.
+**Android:** nothing to configure in the app. For Android's official push (FCM), upload your Firebase project's service account JSON and its `google-services.json` in the iAlert panel; the native module (on the iAlert Android SDK) then gets the FCM token with no `google-services.json` or Firebase plugin in the app. Without them, devices get messages over the iAlert Gateway, the Inbox and the background sync. It also brings notifications with images and custom sounds; taps open `data.url`; and a background sync every 15 minutes shows messages that could not be pushed while FCM is unreachable. The app's `minSdk` must be 23 or later.
 
 ## Usage (manual)
 
