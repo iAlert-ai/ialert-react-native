@@ -5,7 +5,7 @@ import { MemoryStorage, Store } from "./storage.ts";
 import type { AckEvent, AuthRequestInfo, AuthRequestResult, ConnectionState, Device, DevicePlatform, IAlertMessage, KeyValueStorage, RegisterOptions, RemotePush, TagValue, UpdateOptions } from "./types.ts";
 import { currentPlatform, defaultBridge, startNative, type InitOptions, type NativeBridge } from "./native.ts";
 
-export const SDK_VERSION = "0.6.0";
+export const SDK_VERSION = "0.6.1";
 
 const TAG_KEY = /^[A-Za-z0-9_.:-]{1,64}$/;
 const SEEN_LIMIT = 500;

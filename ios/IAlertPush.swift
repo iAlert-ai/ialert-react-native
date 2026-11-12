@@ -18,7 +18,8 @@ public final class IAlertPushSetup: NSObject, UNUserNotificationCenterDelegate {
     static let shownKey = "ialert.native.shown"
 
     private weak var previousDelegate: UNUserNotificationCenterDelegate?
-    private(set) var token: String?
+    /// The last APNs token, kept across launches: it arrives after launch, so registering early still uses it.
+    private(set) var token: String? = UserDefaults.standard.string(forKey: "ialert.native.apnsToken")
     var initialOpen: [String: Any]?
     weak var module: IAlertPush?
     private var installed = false
@@ -53,6 +54,7 @@ public final class IAlertPushSetup: NSObject, UNUserNotificationCenterDelegate {
     func didReceive(token deviceToken: Data) {
         let hex = deviceToken.map { String(format: "%02x", $0) }.joined()
         token = hex
+        UserDefaults.standard.set(hex, forKey: "ialert.native.apnsToken")
         module?.emit("onToken", hex)
     }
 

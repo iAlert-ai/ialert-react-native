@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.1
+
+- iOS: the last APNs token is kept across launches, so a launch that registers before the token arrives no longer replaces it with the installation id (pushes stopped arriving while the app was closed).
+
 ## 0.6.0
 
 - Notification links: `IAlertMessage.url` (from `url`, `ialert_url` or `ialert.url`, falling back to `data.url`), opened on tap by the native side; deep links reach `Linking`.
