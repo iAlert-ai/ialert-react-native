@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.0
+
+- Notification links: `IAlertMessage.url` (from `url`, `ialert_url` or `ialert.url`, falling back to `data.url`), opened on tap by the native side; deep links reach `Linking`.
+- Registration sends a stable `installation_id` and the device model and OS version from the native module (`deviceInfo`), so one install stays one device. Android SDK 0.6.0.
+
 ## 0.5.1
 
 - iOS background sync skips `pushed` entries (APNs showed them) and leaves them unacknowledged, so they are shown once the platform switches to its internal network.

@@ -5,7 +5,7 @@ import { MemoryStorage, Store } from "./storage.ts";
 import type { AckEvent, AuthRequestInfo, AuthRequestResult, ConnectionState, Device, DevicePlatform, IAlertMessage, KeyValueStorage, RegisterOptions, RemotePush, TagValue, UpdateOptions } from "./types.ts";
 import { currentPlatform, defaultBridge, startNative, type InitOptions, type NativeBridge } from "./native.ts";
 
-export const SDK_VERSION = "0.5.1";
+export const SDK_VERSION = "0.6.0";
 
 const TAG_KEY = /^[A-Za-z0-9_.:-]{1,64}$/;
 const SEEN_LIMIT = 500;
@@ -123,6 +123,9 @@ export class IAlert {
         const result = await this.api.register({
             platform: this.options.platform,
             push_token: options.pushToken ?? (await this.installationId()),
+            installation_id: await this.installationId(),
+            ...(options.deviceModel ? { device_model: options.deviceModel } : {}),
+            ...(options.osVersion ? { os_version: options.osVersion } : {}),
             sdk_version: SDK_VERSION,
             ...fields,
             ...environmentFields(options),
@@ -469,6 +472,7 @@ function fromGateway(message: Record<string, unknown>): IAlertMessage {
         collapse_id: text(message.collapse_id),
         created_at: text(message.created_at),
         source: "gateway",
+        url: clickUrl(text(message.url), message.data),
     };
 }
 
@@ -484,6 +488,7 @@ function fromInbox(entry: InboxEntry): IAlertMessage {
         collapse_id: entry.collapse_id,
         created_at: entry.created_at,
         source: "inbox",
+        url: clickUrl(entry.content.url ?? null, data),
     };
 }
 
@@ -538,7 +543,7 @@ function fromPush(push: RemotePush): IAlertMessage | null {
         return null;
     }
 
-    const { ialert_id: _ignored, ...custom } = data;
+    const { ialert_id: _ignored, ialert_url: pushUrl, ...custom } = data;
     const payload = apns !== null ? (apns.data !== null && typeof apns.data === "object" ? (apns.data as Record<string, unknown>) : {}) : custom;
 
     return {
@@ -550,7 +555,19 @@ function fromPush(push: RemotePush): IAlertMessage | null {
         collapse_id: null,
         created_at: null,
         source: "push",
+        url: clickUrl(typeof pushUrl === "string" ? pushUrl : typeof apns?.url === "string" ? apns.url : null, payload),
     };
+}
+
+/** The notification's `url`, or `data.url` of messages sent before that field existed. */
+function clickUrl(url: string | null, data: unknown): string | null {
+    if (url) {
+        return url;
+    }
+
+    const legacy = data !== null && typeof data === "object" && !Array.isArray(data) ? (data as Record<string, unknown>).url : null;
+
+    return typeof legacy === "string" && legacy !== "" ? legacy : null;
 }
 
 /** The Auth Push request a message carries, or `null` for other messages. */

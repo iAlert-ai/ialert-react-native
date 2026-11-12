@@ -61,6 +61,14 @@ public class IAlertPushModule extends ReactContextBaseJavaModule implements IAle
     }
 
     @ReactMethod
+    public void deviceInfo(Promise promise) {
+        WritableMap info = Arguments.createMap();
+        info.putString("model", android.os.Build.MODEL);
+        info.putString("osVersion", android.os.Build.VERSION.RELEASE);
+        promise.resolve(info);
+    }
+
+    @ReactMethod
     public void takeInitialOpen(Promise promise) {
         Map<String, String> open = IAlertBridge.takeInitialOpen();
         promise.resolve(open == null ? null : payload(open, null, null));

@@ -16,6 +16,8 @@ export interface NativeBridge {
     /** Android needs the key and API URL to read the app's push config (iOS ignores them). */
     getToken(config: { publicKey: string; apiUrl: string }): Promise<string | null>;
     takeInitialOpen(): Promise<NativePayload | null>;
+    /** Device model and OS version; optional so older native modules keep working. */
+    deviceInfo?(): Promise<{ model?: string; osVersion?: string } | null>;
     setRegistration(registration: Record<string, string>): void;
     addListener(event: "onToken" | "onPush" | "onOpen", listener: (value: unknown) => void): void;
 }
@@ -65,6 +67,7 @@ export function defaultBridge(): NativeBridge | null {
         requestPermission: () => module.requestPermission(),
         getToken: (config) => module.getToken(config),
         takeInitialOpen: () => module.takeInitialOpen(),
+        deviceInfo: typeof module.deviceInfo === "function" ? () => module.deviceInfo!() : undefined,
         setRegistration: (registration) => module.setRegistration(registration),
         addListener: (event, listener) => {
             emitter.addListener(event, listener);
@@ -90,7 +93,9 @@ function toPush(value: unknown): RemotePush | null {
 export async function startNative(ialert: IAlert, bridge: NativeBridge | null, options: InitOptions): Promise<Device> {
     const { requestPermission, ...fields } = options;
     let token: string | null = null;
-    const register = () => ialert.register({ ...fields, pushToken: token ?? undefined });
+    let info: { model?: string; osVersion?: string } | null = null;
+    const register = () =>
+        ialert.register({ deviceModel: info?.model, osVersion: info?.osVersion, ...fields, pushToken: token ?? undefined });
 
     if (bridge === null) {
         return register();
@@ -111,6 +116,8 @@ export async function startNative(ialert: IAlert, bridge: NativeBridge | null, o
         const push = toPush(value);
         if (push) void ialert.didOpenPush(push);
     });
+
+    info = (await bridge.deviceInfo?.().catch(() => null)) ?? null;
 
     try {
         if (requestPermission !== false) {

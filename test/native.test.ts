@@ -11,6 +11,7 @@ function fakeBridge(token: string | null = "abcdef0123") {
         requestPermission: async () => (calls.push("requestPermission"), true),
         getToken: async () => (calls.push("getToken"), token),
         takeInitialOpen: async () => null,
+        deviceInfo: async () => ({ model: "iPhone16,2", osVersion: "18.1" }),
         setRegistration: (registration) => registrations.push(registration),
         addListener: (event, listener) => {
             listeners[event] = listener;
@@ -34,6 +35,9 @@ describe("init", () => {
         const body = requests.find((r) => r.url.endsWith("/devices"))?.body as Record<string, unknown>;
         assert.equal(body.push_token, "abcdef0123");
         assert.equal(body.external_user_id, "user-42");
+        assert.equal(body.device_model, "iPhone16,2");
+        assert.equal(body.os_version, "18.1");
+        assert.match(String(body.installation_id), /^ia_rn_/);
         assert.deepEqual(calls, ["requestPermission", "getToken"]);
         assert.equal(registrations[0]?.apiUrl, "https://api.test/api/v1");
     });
@@ -58,6 +62,7 @@ describe("init", () => {
         assert.deepEqual(tokens, ["abcdef0123", "ffff"]);
         assert.equal(received.length, 1);
         assert.equal(received[0]?.title, "Hi");
+        assert.equal(received[0]?.url, "app://orders");
         const events = requests.filter((r) => r.url.endsWith("/inbox/ack")).map((r) => (r.body as { event: string }).event);
         assert.ok(events.includes("delivered") && events.includes("clicked"));
     });

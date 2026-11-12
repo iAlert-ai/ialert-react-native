@@ -31,6 +31,11 @@ export interface IAlertMessage {
     created_at: string | null;
     /** Where the SDK got it first. */
     source: "gateway" | "inbox" | "push";
+    /**
+     * Opened on tap by the native side: a web link (`https://…`) or an app deep link
+     * (`myapp://orders/42`, arrives through `Linking`). Falls back to `data.url` for older messages.
+     */
+    url?: string | null;
 }
 
 export type AckEvent = "delivered" | "read" | "clicked";
@@ -44,6 +49,10 @@ export interface RegisterOptions {
     appVersion?: string;
     /** FCM (Android) or APNs (iOS) token once native push is wired; defaults to a stable installation id. */
     pushToken?: string;
+    /** Filled from the native module when linked (`Build.MODEL` / `hw.machine`). */
+    deviceModel?: string;
+    /** Filled from the native module when linked. */
+    osVersion?: string;
 }
 
 export interface UpdateOptions {
