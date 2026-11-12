@@ -35,8 +35,8 @@ repositories {
 dependencies {
     implementation("com.facebook.react:react-android:+")
     if (project.hasProperty("ialertAndroidLocal")) {
-        implementation("ir.ialert:ialert-android:0.6.0")
+        implementation("ir.ialert:ialert-android:0.7.0")
     } else {
-        implementation("com.github.iAlert-ai:ialert-android:v0.6.0")
+        implementation("com.github.iAlert-ai:ialert-android:v0.7.0")
     }
 }

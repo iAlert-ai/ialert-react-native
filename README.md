@@ -37,6 +37,42 @@ Register the scheme as usual (Android intent filter, iOS URL Types) and route it
 React Native's `Linking` (`Linking.getInitialURL()` and `Linking.addEventListener('url', …)`). `IAlertMessage.url` carries the link for messages you handle in
 `onMessage`; older messages with `data.url` behave the same.
 
+## Conversation notifications (sender photo)
+
+Send a message with a `sender` and it is shown like a chat message: the sender's photo and name in place of the app icon (the app icon becomes a small badge).
+
+```json
+{ "title": "New message", "body": "Your order is ready", "sender": { "id": "chat-7", "name": "Sara", "avatar": "https://cdn.example.com/u/7.jpg" }, "target": { "type": "all" } }
+```
+
+`sender.name` is required, `avatar` is an HTTPS image (square, 192×192 or larger), `id` keeps one sender's messages together (the name when omitted). The panel has the same fields. `message.sender` carries it in code.
+
+**Android:** nothing to do (the iAlert Android SDK 0.7.0 does it). The SDK shows it with `MessagingStyle` and a long-lived conversation shortcut, so Android 11+ lists it under Conversations with the round photo; older versions show the photo as the large icon. These messages arrive as high-priority FCM data messages; after a Force stop (or on some aggressive battery savers) Android holds them back, and the background sync or the next launch shows them from the Inbox. The conversation shortcut opens your launcher activity with the `ialert_sender_id` extra (`AndroidNotifier.EXTRA_SENDER_ID`), so you can open that chat.
+
+**iOS** (in `ios/<App>.xcworkspace`):
+
+1. Add a **Notification Service Extension** target (File → New → Target), add the `IAlertNotificationService` product of `https://github.com/iAlert-ai/ialert-ios` to it (Swift Package Manager works next to CocoaPods), set its deployment target to iOS 15+, and make its class:
+
+   ```swift
+   import IAlertNotificationService
+
+   class NotificationService: IAlertNotificationService {}
+   ```
+
+2. On the **app** target: Signing & Capabilities → + Capability → **Communication Notifications**.
+3. In the **app's** `Info.plist`:
+
+   ```xml
+   <key>NSUserActivityTypes</key>
+   <array>
+       <string>INSendMessageIntent</string>
+   </array>
+   ```
+
+Without steps 2–3 iOS shows the message as a normal notification (with the app icon and the image), so nothing is lost.
+
+The same extension also attaches the message `image` on iOS.
+
 ## Usage (manual)
 
 ```ts

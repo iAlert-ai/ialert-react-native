@@ -41,7 +41,7 @@ describe("registration", () => {
         assert.match(String(body.push_token), /^ia_rn_[0-9a-f-]{36}$/);
         assert.equal(body.external_user_id, "user-42");
         assert.deepEqual(body.tags, { plan: "gold" });
-        assert.equal(body.sdk_version, "0.6.1");
+        assert.equal(body.sdk_version, "0.7.0");
         assert.equal((second?.body as Record<string, unknown>).push_token, body.push_token);
     });
 
@@ -314,5 +314,19 @@ describe("auth push", () => {
 
         assert.deepEqual(info, { id: "01AUTH", numberMatching: true, expiresAt: "2026-11-11T10:00:00Z", context: { ip: "5.160.1.2", city: "Tehran" } });
         assert.equal(authRequestOf({ data: { order: "42" } }), null);
+    });
+
+    it("reads the sender of a conversation push from fcm data and apns", async () => {
+        const { fetch } = fakeFetch(registerResponder, ackResponder);
+        const ialert = sdk(fetch, newStorage(), { autoConnect: false });
+        await ialert.register();
+
+        const fcm = await ialert.didReceivePush({ data: { ialert_id: "n1", ialert_title: "New message", ialert_body: "Hi", ialert_sender_id: "chat-7", ialert_sender_name: "Sara", ialert_sender_avatar: "https://img.test/sara.png", ialert_type: "chat" } });
+        const apns = await ialert.didReceivePush({ data: { ialert: { id: "n2", sender: { name: "Sara" } } } });
+
+        assert.deepEqual(fcm?.sender, { id: "chat-7", name: "Sara", avatar: "https://img.test/sara.png" });
+        assert.equal(fcm?.title, "New message");
+        assert.deepEqual(fcm?.data, { ialert_type: "chat" });
+        assert.equal(apns?.sender?.name, "Sara");
     });
 });

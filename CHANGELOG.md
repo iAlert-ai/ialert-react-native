@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.0
+
+- `IAlertMessage.sender` / `IAlertSender`: conversation notifications with the sender's photo on Android (Android SDK 0.7.0) and, with `IAlertNotificationService`, on iOS. FCM data-only messages carry their content in `ialert_*` keys.
+
 ## 0.6.1
 
 - iOS: the last APNs token is kept across launches, so a launch that registers before the token arrives no longer replaces it with the installation id (pushes stopped arriving while the app was closed).

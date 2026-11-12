@@ -2,10 +2,10 @@ import { ApiClient, type InboxEntry } from "./api.ts";
 import { IAlertError } from "./errors.ts";
 import { GatewayConnection, type WebSocketFactory } from "./gateway.ts";
 import { MemoryStorage, Store } from "./storage.ts";
-import type { AckEvent, AuthRequestInfo, AuthRequestResult, ConnectionState, Device, DevicePlatform, IAlertMessage, KeyValueStorage, RegisterOptions, RemotePush, TagValue, UpdateOptions } from "./types.ts";
+import type { AckEvent, AuthRequestInfo, AuthRequestResult, ConnectionState, Device, DevicePlatform, IAlertMessage, IAlertSender, KeyValueStorage, RegisterOptions, RemotePush, TagValue, UpdateOptions } from "./types.ts";
 import { currentPlatform, defaultBridge, startNative, type InitOptions, type NativeBridge } from "./native.ts";
 
-export const SDK_VERSION = "0.6.1";
+export const SDK_VERSION = "0.7.0";
 
 const TAG_KEY = /^[A-Za-z0-9_.:-]{1,64}$/;
 const SEEN_LIMIT = 500;
@@ -473,6 +473,7 @@ function fromGateway(message: Record<string, unknown>): IAlertMessage {
         created_at: text(message.created_at),
         source: "gateway",
         url: clickUrl(text(message.url), message.data),
+        sender: senderFrom(message.sender),
     };
 }
 
@@ -489,6 +490,7 @@ function fromInbox(entry: InboxEntry): IAlertMessage {
         created_at: entry.created_at,
         source: "inbox",
         url: clickUrl(entry.content.url ?? null, data),
+        sender: senderFrom(entry.content.sender),
     };
 }
 
@@ -533,6 +535,9 @@ function uuid(): string {
     return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+/** iAlert's own FCM data keys, not part of the message's custom data. */
+const PUSH_KEYS = new Set(["ialert_id", "ialert_url", "ialert_sound", "ialert_title", "ialert_body", "ialert_image", "ialert_sender_id", "ialert_sender_name", "ialert_sender_avatar"]);
+
 /** FCM data carries `ialert_id`; an APNs payload carries an `ialert` object. */
 function fromPush(push: RemotePush): IAlertMessage | null {
     const data = push.data ?? {};
@@ -543,20 +548,39 @@ function fromPush(push: RemotePush): IAlertMessage | null {
         return null;
     }
 
-    const { ialert_id: _ignored, ialert_url: pushUrl, ...custom } = data;
+    const pushUrl = data.ialert_url;
+    const custom = Object.fromEntries(Object.entries(data).filter(([key]) => !PUSH_KEYS.has(key)));
     const payload = apns !== null ? (apns.data !== null && typeof apns.data === "object" ? (apns.data as Record<string, unknown>) : {}) : custom;
 
     return {
         id,
-        title: push.notification?.title ?? null,
-        body: push.notification?.body ?? null,
-        image: push.notification?.android?.imageUrl ?? (typeof apns?.image === "string" ? apns.image : null),
+        // Messages with a sender come over FCM as data only, with the content in `ialert_*` keys.
+        title: push.notification?.title ?? stringOrNull(data.ialert_title),
+        body: push.notification?.body ?? stringOrNull(data.ialert_body),
+        image: push.notification?.android?.imageUrl ?? stringOrNull(data.ialert_image) ?? (typeof apns?.image === "string" ? apns.image : null),
         data: payload,
         collapse_id: null,
         created_at: null,
         source: "push",
         url: clickUrl(typeof pushUrl === "string" ? pushUrl : typeof apns?.url === "string" ? apns.url : null, payload),
+        sender: apns !== null ? senderFrom(apns.sender) : senderFrom({ id: data.ialert_sender_id, name: data.ialert_sender_name, avatar: data.ialert_sender_avatar }),
     };
+}
+
+function stringOrNull(value: unknown): string | null {
+    return typeof value === "string" && value !== "" ? value : null;
+}
+
+/** A sender object, or null without a name. */
+function senderFrom(value: unknown): IAlertSender | null {
+    if (value === null || typeof value !== "object") {
+        return null;
+    }
+
+    const sender = value as Record<string, unknown>;
+    const name = stringOrNull(sender.name);
+
+    return name ? { id: stringOrNull(sender.id), name, avatar: stringOrNull(sender.avatar) } : null;
 }
 
 /** The notification's `url`, or `data.url` of messages sent before that field existed. */

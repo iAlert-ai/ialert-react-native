@@ -36,6 +36,18 @@ export interface IAlertMessage {
      * (`myapp://orders/42`, arrives through `Linking`). Falls back to `data.url` for older messages.
      */
     url?: string | null;
+    /**
+     * Who the message is from: shown as a conversation (the sender's photo and name in place
+     * of the app icon) on Android, and on iOS through `IAlertNotificationService`.
+     */
+    sender?: IAlertSender | null;
+}
+
+/** The sender of a conversation notification; `id` keeps one sender's messages together, `avatar` is an HTTPS image. */
+export interface IAlertSender {
+    id?: string | null;
+    name: string;
+    avatar?: string | null;
 }
 
 export type AckEvent = "delivered" | "read" | "clicked";

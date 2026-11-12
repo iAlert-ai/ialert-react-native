@@ -9,7 +9,7 @@ export { MemoryStorage } from "./storage.ts";
 export { parseLiveActivityUpdate, type LiveActivityUpdate } from "./liveActivity.ts";
 export type {
     AuthRequestInfo,
-    AuthRequestResult, AckEvent, ConnectionState, Device, DevicePlatform, IAlertMessage, KeyValueStorage, RegisterOptions, RemotePush, TagValue, UpdateOptions } from "./types.ts";
+    AuthRequestResult, AckEvent, ConnectionState, Device, DevicePlatform, IAlertMessage, IAlertSender, KeyValueStorage, RegisterOptions, RemotePush, TagValue, UpdateOptions } from "./types.ts";
 
 /** Create the SDK for the current platform: `createIAlert({ publicKey, storage: AsyncStorage })`. */
 export function createIAlert(options: Omit<IAlertOptions, "platform"> & { platform?: DevicePlatform }): IAlert {
