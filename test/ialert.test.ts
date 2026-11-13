@@ -43,6 +43,9 @@ describe("registration", () => {
         assert.deepEqual(body.tags, { plan: "gold" });
         assert.equal(body.sdk_version, "0.7.0");
         assert.equal((second?.body as Record<string, unknown>).push_token, body.push_token);
+        assert.equal(body.device_binding, true);
+        assert.equal(first?.headers["X-Device-Token"], undefined);
+        assert.equal(second?.headers["X-Device-Token"], "ia_dt_dev_1.sig");
     });
 
     it("refuses platforms other than android and ios", () => {

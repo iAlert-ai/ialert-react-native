@@ -127,9 +127,10 @@ export class IAlert {
             ...(options.deviceModel ? { device_model: options.deviceModel } : {}),
             ...(options.osVersion ? { os_version: options.osVersion } : {}),
             sdk_version: SDK_VERSION,
+            device_binding: true,
             ...fields,
             ...environmentFields(options),
-        });
+        }, state.registration?.deviceToken); // proves this install owns the device
 
         state.registration = { deviceId: result.data.id, deviceToken: result.device_token };
         await this.store.set("registration", state.registration);
